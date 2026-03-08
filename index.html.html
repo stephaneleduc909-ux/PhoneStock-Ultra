@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhoneStock Ultra – Gestion professionnelle</title>
+    <!-- Google Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- QuaggaJS pour scan -->
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <!-- PDF.js pour import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- Chart.js pour graphiques -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- bcryptjs pour hash (simulation) -->
+    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        :root {
+            --color-primary: #3b82f6;
+            --color-secondary: #10b981;
+            --color-accent: #f59e0b;
+            --color-danger: #ef4444;
+            --color-bg-light: #f9fafb;
+            --color-text-light: #1f2937;
+            --color-bg-dark: #1f2937;
+            --color-text-dark: #e2e8f0;
+        }
+
+        body {
+            background-color: var(--color-bg-light);
+            color: var(--color-text-light);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark-mode {
+            background-color: var(--color-bg-dark);
+            color: var(--color-text-dark);
+        }
+        /* Adaptation des cartes et composants en mode sombre via la classe */
+        body.dark-mode .stat-card {
+            background: linear-gradient(145deg, #2d3748, #1e293b);
+            border-color: #4a5568;
+        }
+        body.dark-mode .modal-glass {
+            background: rgba(30, 41, 59, 0.85);
+            border-color: rgba(255,255,255,0.1);
+        }
+        body.dark-mode .chart-container {
+            background: linear-gradient(145deg, #1e293b, #111827);
+        }
+        body.dark-mode .table-produits td {
+            background-color: #1f2937;
+        }
+        body.dark-mode .table-produits tr:hover td {
+            background-color: #374151;
+        }
+        body.dark-mode .product-card {
+            background-color: #1f2937;
+        }
+        /* etc. Les autres sélecteurs sombres seront appliqués via la classe */
+
+        .btn-primary {
+            background: linear-gradient(145deg, var(--color-primary), #2563eb);
+        }
+        .btn-success {
+            background: linear-gradient(145deg, var(--color-secondary), #059669);
+        }
+        .btn-warning {
+            background: linear-gradient(145deg, var(--color-accent), #d97706);
+        }
+        .btn-danger {
+            background: linear-gradient(145deg, var(--color-danger), #dc2626);
+        }
+
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .scale-in { animation: scaleIn 0.2s ease-out; }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .toast { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .badge-alerte { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        .modal-glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 25px 40px -15px rgba(0,0,0,0.3);
+            animation: scaleIn 0.25s ease-out;
+        }
+        .stat-card {
+            background: linear-gradient(145deg, #ffffff, #f9fafb);
+            border: 1px solid #f0f0f0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 20px -8px rgba(0,0,0,0.15);
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .btn-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-shine::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -60%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            transform: rotate(25deg);
+            transition: transform 0.5s;
+        }
+        .btn-shine:hover::after {
+            transform: rotate(25deg) translate(50%, 50%);
+        }
+        .chart-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+            border-radius: 1rem;
+            background: linear-gradient(145deg, #f8fafc, #ffffff);
+            padding: 10px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .login-input {
+            transition: all 0.2s;
+        }
+        .login-input:focus {
+            transform: scale(1.01);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
+        }
+        .table-produits {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+        }
+        .table-produits th {
+            text-align: left;
+            padding: 12px 8px;
+            font-weight: 600;
+            color: #4b5563;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .table-produits td {
+            background-color: white;
+            padding: 16px 8px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.2s;
+        }
+        .table-produits tr:hover td {
+            transform: scale(1.01);
+            box-shadow: 0 8px 15px -6px rgba(0,0,0,0.15);
+            background-color: #f9fafb;
+        }
+        .produit-alerte td {
+            border-left: 4px solid #ef4444;
+        }
+        .search-bar {
+            transition: all 0.2s;
+        }
+        .search-bar:focus {
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
+        }
+        .badge-impaye {
+            background-color: #ef4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+        }
+        .badge-partiel {
+            background-color: #f59e0b;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+        }
+        .badge-paye {
+            background-color: #10b981;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+        }
+        .badge-retard {
+            background-color: #6b7280;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+        }
+        .product-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 20px -8px rgba(0,0,0,0.15);
+        }
+        .btn-vendre {
+            pointer-events: auto !important;
+            z-index: 10;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50">
+
+<div id="app" class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- PAGE DE VERROUILLAGE (accès global) -->
+    <div id="unlock-page" class="max-w-md mx-auto mt-10 bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/30 scale-in">
+        <div class="text-center mb-8">
+            <div class="w-24 h-24 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-xl rotate-3 hover:rotate-0 transition-transform">
+                <i class="fas fa-lock text-5xl text-white"></i>
+            </div>
+            <h2 class="text-4xl font-extrabold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">Accès sécurisé</h2>
+            <p class="text-gray-500 mt-2">Veuillez entrer le code d'accès</p>
+        </div>
+        <div class="space-y-4">
+            <div class="relative">
+                <i class="fas fa-key absolute left-4 top-4 text-gray-400"></i>
+                <input type="password" id="global-code" placeholder="Code d'accès" class="login-input w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm">
+            </div>
+            <button id="btn-unlock" class="btn-shine w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg">Déverrouiller</button>
+            <p id="unlock-error" class="text-red-600 text-sm text-center"></p>
+        </div>
+    </div>
+
+    <!-- PAGE CONNEXION -->
+    <div id="login-page" class="hidden max-w-md mx-auto mt-10 bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/30 scale-in">
+        <div class="text-center mb-8">
+            <div class="w-24 h-24 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-xl rotate-3 hover:rotate-0 transition-transform">
+                <i class="fas fa-mobile-alt text-5xl text-white"></i>
+            </div>
+            <h2 class="text-4xl font-extrabold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">PhoneStock Ultra</h2>
+            <p class="text-gray-500 mt-2">Gestion de stock professionnelle</p>
+        </div>
+        <div class="flex bg-gray-100/80 p-1.5 rounded-2xl mb-6 backdrop-blur-sm">
+            <button id="login-employe-tab" class="flex-1 py-2.5 text-center font-medium rounded-xl transition-all duration-300 bg-white shadow-md text-blue-600">Employé</button>
+            <button id="login-patron-tab" class="flex-1 py-2.5 text-center font-medium rounded-xl transition-all duration-300 text-gray-600">Patron</button>
+        </div>
+        <!-- Employé -->
+        <div id="login-employe-form" class="space-y-4">
+            <div class="relative">
+                <i class="fas fa-user absolute left-4 top-4 text-gray-400"></i>
+                <input type="text" id="emp-username" placeholder="Nom d'utilisateur" class="login-input w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm">
+            </div>
+            <div class="relative">
+                <i class="fas fa-lock absolute left-4 top-4 text-gray-400"></i>
+                <input type="password" id="emp-password" placeholder="Mot de passe" class="login-input w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm">
+            </div>
+            <button id="btn-login-employe" class="btn-shine w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg relative overflow-hidden">Se connecter</button>
+            <button id="btn-register-employe" class="btn-shine w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg">Créer un compte</button>
+        </div>
+        <!-- Patron -->
+        <div id="login-patron-form" class="space-y-4 hidden">
+            <div class="relative">
+                <i class="fas fa-key absolute left-4 top-4 text-gray-400"></i>
+                <input type="password" id="patron-code" placeholder="Code universel" class="login-input w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm">
+            </div>
+            <button id="btn-login-patron" class="btn-shine w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg">Se connecter</button>
+            <button id="btn-reset-code" class="btn-shine w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg">Mot de passe oublié ?</button>
+        </div>
+        <p id="login-error" class="mt-4 text-red-600 text-sm text-center"></p>
+    </div>
+
+    <!-- PAGE EMPLOYÉ -->
+    <div id="employe-page" class="hidden fade-in">
+        <div class="flex justify-between items-center mb-6 bg-white/80 backdrop-blur-xl p-5 rounded-2xl shadow-xl border border-white/30">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl rotate-3 hover:rotate-0 transition-transform">
+                    <i class="fas fa-user-circle text-3xl text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold">Bonjour, <span id="emp-name" class="text-blue-600"></span></h2>
+                    <p class="text-sm text-gray-500">Espace employé</p>
+                </div>
+            </div>
+            <button id="btn-logout" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-sign-out-alt"></i> Déconnexion</button>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <div class="relative flex-1">
+                <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+                <input type="text" id="search-produit" placeholder="Rechercher un produit..." class="w-full pl-12 pr-4 py-3 bg-white/70 backdrop-blur-md border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg">
+            </div>
+            <button id="btn-scan" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl transition-all flex items-center gap-2 justify-center shadow-xl hover:shadow-2xl transform hover:scale-105"><i class="fas fa-camera"></i> Scanner</button>
+        </div>
+        <div id="produits-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+    </div>
+
+    <!-- PAGE PATRON -->
+    <div id="patron-page" class="hidden fade-in">
+        <div class="flex justify-between items-center mb-6 bg-white/80 backdrop-blur-xl p-5 rounded-2xl shadow-xl border border-white/30">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-2xl flex items-center justify-center shadow-xl rotate-3 hover:rotate-0 transition-transform">
+                    <i class="fas fa-crown text-3xl text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold">Tableau de bord patron</h2>
+                    <p class="text-sm text-gray-500">Gérez votre stock</p>
+                </div>
+            </div>
+            <button id="btn-logout2" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-sign-out-alt"></i> Déconnexion</button>
+        </div>
+
+        <!-- Bannière alerte -->
+        <div id="alertes-patron" class="hidden bg-gradient-to-r from-red-600 via-red-500 to-rose-600 text-white p-5 rounded-xl mb-6 flex items-center gap-4 shadow-2xl animate-pulse">
+            <i class="fas fa-exclamation-triangle text-3xl"></i>
+            <span id="alertes-message" class="font-bold text-lg"></span>
+        </div>
+
+        <!-- Stats cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+            <div class="stat-card p-4 rounded-2xl shadow-lg flex items-center gap-3 hover:shadow-xl transition-all">
+                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center"><i class="fas fa-boxes text-blue-600 text-xl"></i></div>
+                <div><p class="text-xs text-gray-500">Produits</p><p class="text-xl font-bold" id="stat-produits">0</p></div>
+            </div>
+            <div class="stat-card p-4 rounded-2xl shadow-lg flex items-center gap-3 hover:shadow-xl">
+                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center"><i class="fas fa-shopping-cart text-green-600 text-xl"></i></div>
+                <div><p class="text-xs text-gray-500">Ventes aujourd'hui</p><p class="text-xl font-bold" id="stat-ventes">0</p></div>
+            </div>
+            <div class="stat-card p-4 rounded-2xl shadow-lg flex items-center gap-3 hover:shadow-xl">
+                <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center"><i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i></div>
+                <div><p class="text-xs text-gray-500">Stock critique</p><p class="text-xl font-bold" id="stat-critique">0</p></div>
+            </div>
+            <div class="stat-card p-4 rounded-2xl shadow-lg flex items-center gap-3 hover:shadow-xl">
+                <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center"><i class="fas fa-users text-purple-600 text-xl"></i></div>
+                <div><p class="text-xs text-gray-500">Employés</p><p class="text-xl font-bold" id="stat-employes">0</p></div>
+            </div>
+            <div class="stat-card p-4 rounded-2xl shadow-lg flex items-center gap-3 hover:shadow-xl">
+                <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center"><i class="fas fa-truck text-indigo-600 text-xl"></i></div>
+                <div><p class="text-xs text-gray-500">Fournisseurs</p><p class="text-xl font-bold" id="stat-fournisseurs">0</p></div>
+            </div>
+            <div class="stat-card p-4 rounded-2xl shadow-lg flex items-center gap-3 hover:shadow-xl">
+                <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center"><i class="fas fa-credit-card text-red-600 text-xl"></i></div>
+                <div><p class="text-xs text-gray-500">Impayés</p><p class="text-xl font-bold" id="stat-impayes">0</p></div>
+            </div>
+        </div>
+
+        <!-- Graphique des ventes -->
+        <div class="bg-white/70 backdrop-blur-md rounded-2xl shadow-xl p-5 mb-6 border border-white/30">
+            <h3 class="text-lg font-semibold mb-3 flex items-center gap-2"><i class="fas fa-chart-line text-blue-600"></i> Évolution des ventes (7 derniers jours)</h3>
+            <div class="chart-container">
+                <canvas id="ventesChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Actions rapides -->
+        <div class="flex flex-wrap gap-3 mb-6">
+            <button id="btn-ajout-produit" class="btn-shine bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-plus-circle"></i> Produit</button>
+            <button id="btn-voir-ventes" class="btn-shine bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-chart-line"></i> Ventes</button>
+            <button id="btn-gerer-employes" class="btn-shine bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-user-cog"></i> Employés</button>
+            <button id="btn-gerer-fournisseurs" class="btn-shine bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-truck"></i> Fournisseurs</button>
+            <button id="btn-reapprovisionnement" class="btn-shine bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-boxes"></i> Réappro</button>
+            <button id="btn-changer-code" class="btn-shine bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-key"></i> Code Patron</button>
+            <button id="btn-changer-global-code" class="btn-shine bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-lock"></i> Code Accès</button>
+            <button id="btn-importer-pdf" class="btn-shine bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-file-pdf"></i> Import PDF</button>
+            <button id="btn-exporter-donnees" class="btn-shine bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-download"></i> Export</button>
+            <button id="btn-gerer-dettes" class="btn-shine bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-credit-card"></i> Dettes</button>
+            <button id="btn-config-api" class="btn-shine bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-plug"></i> API</button>
+            <button id="btn-personnaliser" class="btn-shine bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-palette"></i> Thème</button>
+            <button id="btn-darkmode" class="btn-shine bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"><i class="fas fa-moon"></i> Mode nuit</button>
+        </div>
+
+        <!-- Barre de recherche produits patron -->
+        <div class="relative mb-4">
+            <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+            <input type="text" id="search-produit-patron" placeholder="Rechercher un produit dans la liste..." class="search-bar w-full pl-12 pr-4 py-3 bg-white/70 backdrop-blur-md border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg">
+        </div>
+
+        <h3 class="text-lg font-semibold mb-3 flex items-center gap-2"><i class="fas fa-box-open text-blue-600"></i> Liste des produits</h3>
+        <div class="overflow-x-auto bg-white/50 backdrop-blur-sm rounded-2xl p-4 shadow-xl">
+            <table class="table-produits min-w-full">
+                <thead><tr><th>Nom</th><th>Code-barres</th><th>Prix (FCFA)</th><th>Stock</th><th>Seuil</th><th>Fournisseur</th><th>Actions</th></tr></thead>
+                <tbody id="produits-patron-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODALS (tous les modals identiques à la version précédente) -->
+    <!-- MODAL PRODUIT -->
+    <div id="modal-produit" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-6 scale-in">
+            <h3 id="modal-title" class="text-2xl font-bold mb-5">Ajouter un produit</h3>
+            <form id="form-produit" class="space-y-4">
+                <input type="hidden" id="produit-id">
+                <div><label class="block text-sm font-medium mb-1">Nom *</label><input type="text" id="produit-nom" class="w-full px-4 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500" required></div>
+                <div><label class="block text-sm font-medium mb-1">Code-barres</label><div class="flex gap-2"><input type="text" id="produit-codebarre" class="flex-1 px-4 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500"><button type="button" id="btn-scan-modal" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-xl"><i class="fas fa-camera"></i></button></div></div>
+                <div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-medium mb-1">Prix (FCFA) *</label><input type="number" step="1" id="produit-prix" class="w-full px-4 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500" required></div><div><label class="block text-sm font-medium mb-1">Quantité *</label><input type="number" id="produit-quantite" class="w-full px-4 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500" required></div></div>
+                <div><label class="block text-sm font-medium mb-1">Seuil d'alerte</label><input type="number" id="produit-seuil" class="w-full px-4 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl" placeholder="Ex: 3"></div>
+                <div><label class="block text-sm font-medium mb-1">Fournisseur</label><select id="produit-fournisseur" class="w-full px-4 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl"><option value="">Aucun</option></select></div>
+                <div><label class="block text-sm font-medium mb-1">Image</label><input type="file" id="produit-image" accept="image/*" class="w-full"><img id="image-preview" class="mt-2 max-h-32 rounded-xl hidden"></div>
+                <div class="flex justify-end gap-3 pt-4"><button type="button" id="btn-annuler-modal" class="px-5 py-2 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">Annuler</button><button type="submit" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2 rounded-xl">Enregistrer</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL SCANNER -->
+    <div id="modal-scanner" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-2xl mx-4 p-6 scale-in"><h3 class="text-xl font-bold mb-4">Scanner un code-barres</h3><div id="scanner-container" class="w-full h-64 bg-black rounded-xl overflow-hidden"></div><div class="flex justify-end mt-4"><button id="btn-fermer-scanner" class="px-5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl">Fermer</button></div></div>
+    </div>
+
+    <!-- MODAL VENTES -->
+    <div id="modal-ventes" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-4xl mx-4 p-6 max-h-[80vh] overflow-y-auto scale-in">
+            <h3 class="text-xl font-bold mb-4">Historique des ventes</h3>
+            <div class="flex flex-col sm:flex-row gap-3 mb-4"><input type="date" id="filtre-date" class="px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl"><select id="filtre-employe" class="px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl"><option value="">Tous employés</option></select></div>
+            <div class="overflow-x-auto"><table class="w-full border-collapse"><thead><tr class="bg-gray-100 dark:bg-gray-700"><th class="p-2 text-left">Date</th><th class="p-2 text-left">Produit</th><th class="p-2 text-left">Qté</th><th class="p-2 text-left">Total (FCFA)</th><th class="p-2 text-left">Employé</th></tr></thead><tbody id="table-ventes"></tbody></table></div>
+            <p id="total-ventes" class="text-right font-bold mt-4"></p>
+            <div class="flex justify-end mt-4"><button id="btn-fermer-ventes" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl">Fermer</button></div>
+        </div>
+    </div>
+
+    <!-- MODAL EMPLOYÉS -->
+    <div id="modal-employes" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-md mx-4 p-6 scale-in">
+            <h3 class="text-xl font-bold mb-4">Gérer les employés</h3>
+            <div class="mb-4"><input type="text" id="new-employe-username" placeholder="Nom d'utilisateur" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl"><input type="password" id="new-employe-password" placeholder="Mot de passe" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl mt-2"><button id="btn-add-employe" class="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl w-full">Ajouter</button></div>
+            <ul id="liste-employes" class="divide-y divide-gray-200 dark:divide-gray-700"></ul>
+            <div class="flex justify-end mt-4"><button id="btn-fermer-employes" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl">Fermer</button></div>
+        </div>
+    </div>
+
+    <!-- MODAL FOURNISSEURS -->
+    <div id="modal-fournisseurs" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-md mx-4 p-6 scale-in">
+            <h3 class="text-xl font-bold mb-4">Gérer les fournisseurs</h3>
+            <div class="mb-4"><input type="text" id="new-fournisseur-nom" placeholder="Nom du fournisseur" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl"><input type="text" id="new-fournisseur-contact" placeholder="Contact (email/tél)" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl mt-2"><button id="btn-add-fournisseur" class="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl w-full">Ajouter</button></div>
+            <ul id="liste-fournisseurs" class="divide-y divide-gray-200 dark:divide-gray-700"></ul>
+            <div class="flex justify-end mt-4"><button id="btn-fermer-fournisseurs" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl">Fermer</button></div>
+        </div>
+    </div>
+
+    <!-- MODAL RÉAPPROVISIONNEMENT (avec barre de recherche) -->
+    <div id="modal-reappro" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-md mx-4 p-6 scale-in">
+            <h3 class="text-xl font-bold mb-4">Réapprovisionner un produit</h3>
+            <div class="mb-2">
+                <input type="text" id="reappro-search" placeholder="Rechercher un produit..." class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+            </div>
+            <select id="reappro-produit" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl mb-4"></select>
+            <input type="number" id="reappro-quantite" placeholder="Quantité à ajouter" min="1" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl mb-4">
+            <div class="flex justify-end gap-3">
+                <button id="btn-annuler-reappro" class="px-5 py-2 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">Annuler</button>
+                <button id="btn-valider-reappro" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2 rounded-xl">Valider</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CHANGER CODE PATRON -->
+    <div id="modal-changer-code" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-md mx-4 p-6 scale-in"><h3 class="text-xl font-bold mb-4">Changer le code universel (patron)</h3><div class="space-y-4"><input type="password" id="nouveau-code" placeholder="Nouveau code" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl"><input type="password" id="confirmer-code" placeholder="Confirmer" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl"><div class="flex justify-end gap-3"><button id="btn-annuler-code" class="px-5 py-2 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">Annuler</button><button id="btn-sauvegarder-code" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2 rounded-xl">Sauvegarder</button></div></div></div>
+    </div>
+
+    <!-- MODAL CHANGER CODE D'ACCÈS GLOBAL -->
+    <div id="modal-changer-global-code" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-md mx-4 p-6 scale-in">
+            <h3 class="text-xl font-bold mb-4">Changer le code d'accès global</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Ce code protège l'entrée du site.</p>
+            <div class="space-y-4">
+                <input type="password" id="nouveau-global-code" placeholder="Nouveau code" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl">
+                <input type="password" id="confirmer-global-code" placeholder="Confirmer" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl">
+                <div class="flex justify-end gap-3">
+                    <button id="btn-annuler-global-code" class="px-5 py-2 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">Annuler</button>
+                    <button id="btn-sauvegarder-global-code" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2 rounded-xl">Sauvegarder</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL IMPORT PDF -->
+    <div id="modal-import-pdf" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-6 scale-in">
+            <h3 class="text-xl font-bold mb-4">Importer des produits depuis un PDF</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Format attendu par ligne : Nom Prix (FCFA) Quantité Seuil (optionnel) Code-barres (optionnel).</p>
+            <input type="file" id="pdf-file" accept="application/pdf" class="mb-4">
+            <div class="flex justify-end gap-3"><button id="btn-annuler-import" class="px-5 py-2 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">Annuler</button><button id="btn-importer-fichier" class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2 rounded-xl">Importer</button></div>
+            <div id="import-log" class="mt-4 text-sm"></div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURATION API -->
+    <div id="modal-config-api" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-6 scale-in">
+            <h3 class="text-xl font-bold mb-4">Configuration des API</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Paramètres pour connecter votre application à des services externes (WhatsApp, etc.)</p>
+            <div class="space-y-4">
+                <div><label class="block text-sm font-medium mb-1">API WhatsApp - Token d'accès</label><input type="text" id="api-whatsapp-token" placeholder="Token d'accès" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"></div>
+                <div><label class="block text-sm font-medium mb-1">Numéro de téléphone (ID)</label><input type="text" id="api-whatsapp-phone" placeholder="Phone number ID" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"></div>
+                <div><label class="block text-sm font-medium mb-1">Webhook URL</label><input type="url" id="api-webhook-url" placeholder="https://exemple.com/webhook" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"></div>
+                <div><label class="block text-sm font-medium mb-1">Clé secrète webhook</label><input type="text" id="api-webhook-secret" placeholder="Clé secrète" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"></div>
+                <div class="border-t pt-4"><h4 class="font-medium mb-2">Autres API</h4><div><label class="block text-sm font-medium mb-1">API de paiement (clé)</label><input type="text" id="api-paiement-key" placeholder="Clé API" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"></div></div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="btn-annuler-api" class="px-5 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Annuler</button>
+                <button id="btn-sauvegarder-api" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2 rounded-lg">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETTES SIMPLIFIÉ -->
+    <div id="modal-dettes" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-6xl mx-4 p-6 max-h-[90vh] overflow-y-auto scale-in">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Gestion des dettes clients</h3>
+                <button id="btn-fermer-dettes" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-2xl"></i></button>
+            </div>
+
+            <!-- Récapitulatif des dettes -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white dark:bg-gray-700 p-4 rounded-xl shadow">
+                    <p class="text-sm text-gray-500">Total dettes</p>
+                    <p class="text-2xl font-bold" id="recap-total-dettes">0 FCFA</p>
+                </div>
+                <div class="bg-white dark:bg-gray-700 p-4 rounded-xl shadow">
+                    <p class="text-sm text-gray-500">Total payé</p>
+                    <p class="text-2xl font-bold" id="recap-total-paye">0 FCFA</p>
+                </div>
+                <div class="bg-white dark:bg-gray-700 p-4 rounded-xl shadow">
+                    <p class="text-sm text-gray-500">Reste à payer</p>
+                    <p class="text-2xl font-bold" id="recap-total-reste">0 FCFA</p>
+                </div>
+                <div class="bg-white dark:bg-gray-700 p-4 rounded-xl shadow">
+                    <p class="text-sm text-gray-500">Dettes en retard</p>
+                    <p class="text-2xl font-bold" id="recap-nb-retard">0</p>
+                </div>
+            </div>
+
+            <!-- Filtres -->
+            <div class="flex flex-wrap gap-3 mb-4">
+                <select id="filtre-dette-client" class="px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+                    <option value="">Tous les clients</option>
+                </select>
+                <select id="filtre-dette-statut" class="px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+                    <option value="">Tous statuts</option>
+                    <option value="impaye">Impayé</option>
+                    <option value="partiel">Partiel</option>
+                    <option value="paye">Payé</option>
+                </select>
+                <input type="date" id="filtre-dette-date" class="px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+                <button id="btn-reinitialiser-filtres" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">Réinitialiser</button>
+            </div>
+
+            <!-- Ajout d'un client -->
+            <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                <h4 class="font-semibold mb-2">Nouveau client</h4>
+                <div class="flex flex-wrap gap-2">
+                    <input type="text" id="new-client-nom" placeholder="Nom du client" class="flex-1 px-3 py-2 bg-white/70 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg">
+                    <input type="text" id="new-client-contact" placeholder="Contact (optionnel)" class="flex-1 px-3 py-2 bg-white/70 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg">
+                    <button id="btn-add-client" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">Ajouter client</button>
+                </div>
+            </div>
+
+            <!-- Ajout d'une dette -->
+            <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                <h4 class="font-semibold mb-2">Nouvelle dette</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <select id="dette-client" class="px-3 py-2 bg-white/70 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg">
+                        <option value="">Choisir un client</option>
+                    </select>
+                    <div></div>
+                </div>
+                <div class="mt-3">
+                    <label class="block text-sm font-medium mb-1">Description du produit</label>
+                    <input type="text" id="dette-produit-description" placeholder="Ex: Batterie iPhone 11 x2, Écran Samsung S21..." class="w-full px-3 py-2 bg-white/70 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Montant total (FCFA)</label>
+                        <input type="number" id="dette-montant" class="px-3 py-2 bg-white/70 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Date d'échéance</label>
+                        <input type="date" id="dette-echeance" class="px-3 py-2 bg-white/70 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg">
+                    </div>
+                </div>
+                <button id="btn-add-dette" class="mt-3 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">Enregistrer la dette</button>
+            </div>
+
+            <!-- Liste des dettes -->
+            <h4 class="font-semibold mb-2">Liste des dettes</h4>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 dark:bg-gray-700">
+                            <th class="p-2 text-left">Client</th>
+                            <th class="p-2 text-left">Description</th>
+                            <th class="p-2 text-left">Montant total</th>
+                            <th class="p-2 text-left">Payé</th>
+                            <th class="p-2 text-left">Reste</th>
+                            <th class="p-2 text-left">Échéance</th>
+                            <th class="p-2 text-left">Statut</th>
+                            <th class="p-2 text-left">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-dettes"></tbody>
+                </table>
+            </div>
+
+            <!-- Sous-modals détail/édition -->
+            <div id="modal-dette-detail" class="hidden fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-[60]">
+                <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-6 scale-in">
+                    <h3 class="text-xl font-bold mb-4">Détails de la dette</h3>
+                    <input type="hidden" id="dette-detail-id">
+                    <div class="space-y-2">
+                        <p><span class="font-medium">Client :</span> <span id="dette-detail-client"></span></p>
+                        <p><span class="font-medium">Description :</span> <span id="dette-detail-description"></span></p>
+                        <p><span class="font-medium">Montant total :</span> <span id="dette-detail-montant"></span> FCFA</p>
+                        <p><span class="font-medium">Déjà payé :</span> <span id="dette-detail-paye"></span> FCFA</p>
+                        <p><span class="font-medium">Reste :</span> <span id="dette-detail-reste"></span> FCFA</p>
+                        <p><span class="font-medium">Échéance :</span> <span id="dette-detail-echeance"></span></p>
+                        <p><span class="font-medium">Statut :</span> <span id="dette-detail-statut"></span></p>
+                    </div>
+                    <h4 class="font-semibold mt-4 mb-2">Historique des paiements</h4>
+                    <div class="max-h-40 overflow-y-auto border rounded p-2">
+                        <ul id="dette-detail-paiements"></ul>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium mb-1">Ajouter un paiement</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="dette-detail-paiement-montant" placeholder="Montant" class="flex-1 px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+                            <input type="date" id="dette-detail-paiement-date" class="px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+                            <button id="btn-dette-detail-ajouter-paiement" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">Ajouter</button>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-4">
+                        <button id="btn-dette-detail-modifier" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">Modifier</button>
+                        <button id="btn-dette-detail-supprimer" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Supprimer</button>
+                        <button id="btn-dette-detail-fermer" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">Fermer</button>
+                    </div>
+                </div>
+            </div>
+            <div id="modal-dette-edit" class="hidden fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-[60]">
+                <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-6 scale-in">
+                    <h3 class="text-xl font-bold mb-4">Modifier la dette</h3>
+                    <input type="hidden" id="dette-edit-id">
+                    <div class="space-y-3">
+                        <div><label class="block text-sm font-medium mb-1">Client</label><select id="dette-edit-client" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"></select></div>
+                        <div><label class="block text-sm font-medium mb-1">Description</label><input type="text" id="dette-edit-description" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"></div>
+                        <div><label class="block text-sm font-medium mb-1">Montant total</label><input type="number" id="dette-edit-montant" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"></div>
+                        <div><label class="block text-sm font-medium mb-1">Échéance</label><input type="date" id="dette-edit-echeance" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"></div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-4">
+                        <button id="btn-dette-edit-annuler" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">Annuler</button>
+                        <button id="btn-dette-edit-sauvegarder" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">Sauvegarder</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL VENTE QUANTITÉ -->
+    <div id="modal-vente-quantite" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-md mx-4 p-6 scale-in">
+            <h3 class="text-xl font-bold mb-4" id="modal-vente-titre">Vendre</h3>
+            <p id="modal-vente-detail" class="mb-4"></p>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Quantité</label>
+                <input type="number" id="vente-quantite" min="1" value="1" class="w-full px-3 py-2 bg-white/70 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+            </div>
+            <div class="flex justify-end gap-3">
+                <button id="btn-annuler-vente" class="px-5 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Annuler</button>
+                <button id="btn-confirmer-vente" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2 rounded-lg">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PERSONNALISATION (THÈME) -->
+    <div id="modal-personnaliser" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="modal-glass dark:bg-gray-800/90 rounded-3xl shadow-2xl w-full max-w-md mx-4 p-6 scale-in">
+            <h3 class="text-xl font-bold mb-4">Personnaliser les couleurs</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Couleur principale</label>
+                    <input type="color" id="color-primary" class="w-full h-10 rounded border border-gray-300 dark:border-gray-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Couleur secondaire</label>
+                    <input type="color" id="color-secondary" class="w-full h-10 rounded border border-gray-300 dark:border-gray-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Couleur d'accent</label>
+                    <input type="color" id="color-accent" class="w-full h-10 rounded border border-gray-300 dark:border-gray-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Couleur danger</label>
+                    <input type="color" id="color-danger" class="w-full h-10 rounded border border-gray-300 dark:border-gray-600">
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button id="btn-annuler-personnaliser" class="px-5 py-2 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">Annuler</button>
+                    <button id="btn-sauvegarder-personnaliser" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2 rounded-xl">Sauvegarder</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+</div>
+
+<script>
+    // ==================== DONNÉES ====================
+    let currentUser = null;
+    let produits = JSON.parse(localStorage.getItem('produits')) || [];
+    let ventes = JSON.parse(localStorage.getItem('ventes')) || [];
+    let employes = JSON.parse(localStorage.getItem('employes')) || [];
+    let fournisseurs = JSON.parse(localStorage.getItem('fournisseurs')) || [];
+    let clients = JSON.parse(localStorage.getItem('clients')) || [];
+    let dettes = JSON.parse(localStorage.getItem('dettes')) || [];
+    let paiements = JSON.parse(localStorage.getItem('paiements')) || [];
+    let apiConfig = JSON.parse(localStorage.getItem('apiConfig')) || {
+        whatsappToken: '', whatsappPhone: '', webhookUrl: '', webhookSecret: '', paiementKey: ''
+    };
+    let patronCode = localStorage.getItem('patronCode') || '1234';
+    let globalAccessCode = localStorage.getItem('globalAccessCode') || '1234';
+    let themeColors = JSON.parse(localStorage.getItem('themeColors')) || {
+        primary: '#3b82f6',
+        secondary: '#10b981',
+        accent: '#f59e0b',
+        danger: '#ef4444'
+    };
+    let darkMode = localStorage.getItem('darkMode') === 'true'; // stocke si le mode sombre est activé
+
+    // Appliquer le thème et le mode sombre
+    function applyTheme(colors) {
+        document.documentElement.style.setProperty('--color-primary', colors.primary);
+        document.documentElement.style.setProperty('--color-secondary', colors.secondary);
+        document.documentElement.style.setProperty('--color-accent', colors.accent);
+        document.documentElement.style.setProperty('--color-danger', colors.danger);
+    }
+    applyTheme(themeColors);
+
+    function applyDarkMode(isDark) {
+        if (isDark) {
+            document.body.classList.add('dark-mode');
+            document.getElementById('btn-darkmode').innerHTML = '<i class="fas fa-sun"></i> Mode jour';
+        } else {
+            document.body.classList.remove('dark-mode');
+            document.getElementById('btn-darkmode').innerHTML = '<i class="fas fa-moon"></i> Mode nuit';
+        }
+    }
+
+    // Initialiser le mode sombre au chargement
+    applyDarkMode(darkMode);
+
+    // Initialisation avec données de démo
+    if (produits.length === 0) {
+        produits.push({ id: generateId(), nom: 'Batterie iPhone 11', codeBarre: '123456789', prix: 16250, quantite: 2, seuil: 3, fournisseurId: null, image: null });
+        produits.push({ id: generateId(), nom: 'Écran Samsung S21', codeBarre: '987654321', prix: 57850, quantite: 5, seuil: 2, fournisseurId: null, image: null });
+        produits.push({ id: generateId(), nom: 'Chargeur USB-C', codeBarre: '555555555', prix: 7800, quantite: 20, seuil: 5, fournisseurId: null, image: null });
+        produits.push({ id: generateId(), nom: 'Coque iPhone 12', codeBarre: '111222333', prix: 9750, quantite: 1, seuil: 2, fournisseurId: null, image: null });
+    }
+    if (employes.length === 0) {
+        employes.push({ id: generateId(), username: 'jean', password: hashPassword('123'), role: 'employe' });
+        employes.push({ id: generateId(), username: 'marie', password: hashPassword('123'), role: 'employe' });
+    }
+    if (fournisseurs.length === 0) {
+        fournisseurs.push({ id: generateId(), nom: 'Fournisseur A', contact: 'contact@a.com' });
+        fournisseurs.push({ id: generateId(), nom: 'Fournisseur B', contact: 'contact@b.com' });
+    }
+    if (clients.length === 0) {
+        clients.push({ id: generateId(), nom: 'Client A', contact: 'clientA@mail.com' });
+        clients.push({ id: generateId(), nom: 'Client B', contact: 'clientB@mail.com' });
+    }
+    if (dettes.length === 0) {
+        dettes.push({
+            id: generateId(),
+            clientId: clients[0].id,
+            description: 'Batterie iPhone 11 x2, Écran Samsung S21',
+            montantTotal: 2 * 16250 + 57850,
+            dateEcheance: '2025-12-31'
+        });
+        paiements.push({ id: generateId(), detteId: dettes[0].id, montant: 15000, date: '2025-02-15' });
+    }
+    if (ventes.length === 0) {
+        for (let i = 0; i < 14; i++) {
+            let date = new Date(); date.setDate(date.getDate() - i);
+            ventes.push({ id: generateId(), produitId: produits[0].id, produitNom: produits[0].nom, employeId: employes[0].id, employeNom: 'jean', quantite: Math.floor(Math.random() * 3) + 1, prixUnitaire: produits[0].prix, date: date.toISOString() });
+        }
+    }
+    saveData();
+
+    function generateId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 9); }
+    function saveData() {
+        localStorage.setItem('produits', JSON.stringify(produits));
+        localStorage.setItem('ventes', JSON.stringify(ventes));
+        localStorage.setItem('employes', JSON.stringify(employes));
+        localStorage.setItem('fournisseurs', JSON.stringify(fournisseurs));
+        localStorage.setItem('clients', JSON.stringify(clients));
+        localStorage.setItem('dettes', JSON.stringify(dettes));
+        localStorage.setItem('paiements', JSON.stringify(paiements));
+        localStorage.setItem('apiConfig', JSON.stringify(apiConfig));
+        localStorage.setItem('patronCode', patronCode);
+        localStorage.setItem('globalAccessCode', globalAccessCode);
+        localStorage.setItem('themeColors', JSON.stringify(themeColors));
+        localStorage.setItem('darkMode', darkMode);
+    }
+
+    function hashPassword(pwd) { return btoa(pwd); }
+    function verifyPassword(pwd, hash) { return btoa(pwd) === hash; }
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast px-4 py-3 rounded-xl shadow-lg text-white flex items-center gap-2 ${type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : type === 'error' ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`;
+        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle'}"></i> ${message}`;
+        container.appendChild(toast);
+        setTimeout(() => { toast.remove(); }, 3000);
+    }
+
+    function updatePatronStats() {
+        document.getElementById('stat-produits').textContent = produits.length;
+        const today = new Date().toDateString();
+        const ventesToday = ventes.filter(v => new Date(v.date).toDateString() === today).length;
+        document.getElementById('stat-ventes').textContent = ventesToday;
+        const critique = produits.filter(p => p.seuil && p.quantite <= p.seuil).length;
+        document.getElementById('stat-critique').textContent = critique;
+        document.getElementById('stat-employes').textContent = employes.length;
+        document.getElementById('stat-fournisseurs').textContent = fournisseurs.length;
+        const totalImpayes = dettes.reduce((acc, d) => {
+            const totalPaye = paiements.filter(p => p.detteId === d.id).reduce((s, p) => s + p.montant, 0);
+            return acc + (d.montantTotal - totalPaye);
+        }, 0);
+        document.getElementById('stat-impayes').textContent = totalImpayes.toFixed(0) + ' FCFA';
+    }
+
+    function verifierAlertes() {
+        const alertes = produits.filter(p => p.seuil && p.quantite <= p.seuil);
+        const alertDiv = document.getElementById('alertes-patron');
+        const alertMsg = document.getElementById('alertes-message');
+        if (alertes.length > 0) {
+            alertDiv.classList.remove('hidden');
+            alertMsg.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> ${alertes.length} produit(s) en stock faible !`;
+        } else {
+            alertDiv.classList.add('hidden');
+        }
+    }
+
+    // ==================== GESTION DU VERROUILLAGE GLOBAL ====================
+    function checkUnlock() {
+        if (sessionStorage.getItem('siteUnlocked') === 'true') {
+            document.getElementById('unlock-page').classList.add('hidden');
+            document.getElementById('login-page').classList.remove('hidden');
+        } else {
+            document.getElementById('unlock-page').classList.remove('hidden');
+            document.getElementById('login-page').classList.add('hidden');
+        }
+    }
+
+    document.getElementById('btn-unlock').addEventListener('click', function() {
+        const code = document.getElementById('global-code').value.trim();
+        if (code === globalAccessCode) {
+            sessionStorage.setItem('siteUnlocked', 'true');
+            document.getElementById('unlock-page').classList.add('hidden');
+            document.getElementById('login-page').classList.remove('hidden');
+            document.getElementById('global-code').value = '';
+            document.getElementById('unlock-error').textContent = '';
+        } else {
+            document.getElementById('unlock-error').textContent = 'Code incorrect';
+        }
+    });
+
+    document.getElementById('global-code').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('btn-unlock').click();
+        }
+    });
+
+    // ==================== ATTACHER LES ÉVÉNEMENTS ====================
+    document.addEventListener('DOMContentLoaded', function() {
+        checkUnlock();
+
+        // Auth tabs
+        document.getElementById('login-employe-tab').addEventListener('click', function() {
+            this.classList.add('bg-white', 'shadow-md', 'text-blue-600');
+            document.getElementById('login-patron-tab').classList.remove('bg-white', 'shadow-md', 'text-blue-600');
+            document.getElementById('login-employe-form').classList.remove('hidden');
+            document.getElementById('login-patron-form').classList.add('hidden');
+        });
+        document.getElementById('login-patron-tab').addEventListener('click', function() {
+            this.classList.add('bg-white', 'shadow-md', 'text-blue-600');
+            document.getElementById('login-employe-tab').classList.remove('bg-white', 'shadow-md', 'text-blue-600');
+            document.getElementById('login-patron-form').classList.remove('hidden');
+            document.getElementById('login-employe-form').classList.add('hidden');
+        });
+
+        document.getElementById('btn-register-employe').addEventListener('click', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('emp-username').value.trim();
+            const password = document.getElementById('emp-password').value.trim();
+            if (!username || !password) { showToast('Veuillez remplir tous les champs', 'error'); return; }
+            if (employes.find(e => e.username === username)) { showToast('Nom d\'utilisateur déjà pris', 'error'); return; }
+            employes.push({ id: generateId(), username, password: hashPassword(password), role: 'employe' });
+            saveData();
+            showToast('Compte créé avec succès !');
+            document.getElementById('emp-username').value = '';
+            document.getElementById('emp-password').value = '';
+        });
+
+        document.getElementById('btn-login-employe').addEventListener('click', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('emp-username').value.trim();
+            const password = document.getElementById('emp-password').value.trim();
+            const emp = employes.find(e => e.username === username && verifyPassword(password, e.password));
+            if (!emp) { showToast('Identifiants incorrects', 'error'); return; }
+            currentUser = emp;
+            showEmployePage();
+            showToast('Connexion réussie');
+        });
+
+        document.getElementById('btn-login-patron').addEventListener('click', (e) => {
+            e.preventDefault();
+            const code = document.getElementById('patron-code').value.trim();
+            if (code !== patronCode) { showToast('Code incorrect', 'error'); return; }
+            currentUser = { id: 'patron', username: 'Patron', role: 'patron' };
+            showPatronPage();
+            showToast('Bienvenue patron');
+        });
+
+        document.getElementById('btn-reset-code').addEventListener('click', () => {
+            const email = prompt('Entrez votre email (simulation) :');
+            if (email) showToast('Lien de réinitialisation envoyé (simulé).');
+        });
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('employe-page').classList.add('hidden');
+            document.getElementById('patron-page').classList.add('hidden');
+            document.getElementById('login-page').classList.remove('hidden');
+        }
+        document.getElementById('btn-logout').addEventListener('click', logout);
+        document.getElementById('btn-logout2').addEventListener('click', logout);
+
+        // Boutons du patron
+        document.getElementById('btn-ajout-produit').addEventListener('click', () => ouvrirModalProduit(null));
+        document.getElementById('btn-voir-ventes').addEventListener('click', () => {
+            const modal = document.getElementById('modal-ventes');
+            remplirFiltreEmployes();
+            afficherVentes();
+            modal.classList.remove('hidden');
+        });
+        document.getElementById('btn-gerer-employes').addEventListener('click', () => { afficherListeEmployes(); document.getElementById('modal-employes').classList.remove('hidden'); });
+        document.getElementById('btn-gerer-fournisseurs').addEventListener('click', () => { afficherListeFournisseurs(); document.getElementById('modal-fournisseurs').classList.remove('hidden'); });
+
+        // Réapprovisionnement avec recherche
+        document.getElementById('btn-reapprovisionnement').addEventListener('click', () => {
+            document.getElementById('reappro-search').value = '';
+            updateReapproSelect('');
+            document.getElementById('modal-reappro').classList.remove('hidden');
+        });
+
+        document.getElementById('reappro-search').addEventListener('input', function(e) {
+            updateReapproSelect(e.target.value);
+        });
+
+        document.getElementById('btn-changer-code').addEventListener('click', () => { document.getElementById('modal-changer-code').classList.remove('hidden'); });
+        document.getElementById('btn-changer-global-code').addEventListener('click', () => { document.getElementById('modal-changer-global-code').classList.remove('hidden'); });
+        document.getElementById('btn-importer-pdf').addEventListener('click', () => { document.getElementById('modal-import-pdf').classList.remove('hidden'); document.getElementById('import-log').innerHTML = ''; document.getElementById('pdf-file').value = ''; });
+        document.getElementById('btn-exporter-donnees').addEventListener('click', () => {
+            const data = { produits, ventes, employes, fournisseurs, clients, dettes, paiements, apiConfig, patronCode, globalAccessCode, themeColors, darkMode };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'phonestock-backup.json';
+            a.click();
+            showToast('Données exportées');
+        });
+
+        document.getElementById('btn-gerer-dettes').addEventListener('click', () => {
+            remplirFiltresDettes();
+            remplirSelectClients();
+            document.getElementById('dette-produit-description').value = '';
+            document.getElementById('dette-montant').value = '';
+            document.getElementById('dette-echeance').value = '';
+            document.getElementById('modal-dettes').classList.remove('hidden');
+        });
+
+        document.getElementById('btn-config-api').addEventListener('click', () => { chargerConfigApi(); document.getElementById('modal-config-api').classList.remove('hidden'); });
+
+        // Thème personnalisé
+        document.getElementById('btn-personnaliser').addEventListener('click', () => {
+            document.getElementById('color-primary').value = themeColors.primary;
+            document.getElementById('color-secondary').value = themeColors.secondary;
+            document.getElementById('color-accent').value = themeColors.accent;
+            document.getElementById('color-danger').value = themeColors.danger;
+            document.getElementById('modal-personnaliser').classList.remove('hidden');
+        });
+
+        document.getElementById('btn-annuler-personnaliser').addEventListener('click', () => {
+            document.getElementById('modal-personnaliser').classList.add('hidden');
+        });
+
+        document.getElementById('btn-sauvegarder-personnaliser').addEventListener('click', () => {
+            themeColors = {
+                primary: document.getElementById('color-primary').value,
+                secondary: document.getElementById('color-secondary').value,
+                accent: document.getElementById('color-accent').value,
+                danger: document.getElementById('color-danger').value
+            };
+            applyTheme(themeColors);
+            saveData();
+            document.getElementById('modal-personnaliser').classList.add('hidden');
+            showToast('Thème sauvegardé');
+        });
+
+        // Bouton mode nuit/jour
+        document.getElementById('btn-darkmode').addEventListener('click', () => {
+            darkMode = !darkMode;
+            applyDarkMode(darkMode);
+            saveData();
+        });
+
+        // Fermeture des modals
+        document.getElementById('btn-annuler-modal').addEventListener('click', () => document.getElementById('modal-produit').classList.add('hidden'));
+        document.getElementById('btn-fermer-scanner').addEventListener('click', () => { if (scannerActive) Quagga.stop(); scannerActive = false; document.getElementById('modal-scanner').classList.add('hidden'); });
+        document.getElementById('btn-fermer-ventes').addEventListener('click', () => document.getElementById('modal-ventes').classList.add('hidden'));
+        document.getElementById('btn-fermer-employes').addEventListener('click', () => document.getElementById('modal-employes').classList.add('hidden'));
+        document.getElementById('btn-fermer-fournisseurs').addEventListener('click', () => document.getElementById('modal-fournisseurs').classList.add('hidden'));
+        document.getElementById('btn-annuler-reappro').addEventListener('click', () => document.getElementById('modal-reappro').classList.add('hidden'));
+        document.getElementById('btn-annuler-code').addEventListener('click', () => document.getElementById('modal-changer-code').classList.add('hidden'));
+        document.getElementById('btn-annuler-import').addEventListener('click', () => document.getElementById('modal-import-pdf').classList.add('hidden'));
+        document.getElementById('btn-annuler-api').addEventListener('click', () => document.getElementById('modal-config-api').classList.add('hidden'));
+        document.getElementById('btn-annuler-global-code').addEventListener('click', () => document.getElementById('modal-changer-global-code').classList.add('hidden'));
+
+        // Sauvegarde code global
+        document.getElementById('btn-sauvegarder-global-code').addEventListener('click', () => {
+            const nouveau = document.getElementById('nouveau-global-code').value;
+            const confirmer = document.getElementById('confirmer-global-code').value;
+            if (!nouveau || nouveau !== confirmer) {
+                showToast('Les codes ne correspondent pas', 'error');
+                return;
+            }
+            globalAccessCode = nouveau;
+            saveData();
+            showToast('Code d\'accès global modifié');
+            document.getElementById('modal-changer-global-code').classList.add('hidden');
+            document.getElementById('nouveau-global-code').value = '';
+            document.getElementById('confirmer-global-code').value = '';
+        });
+
+        // Événements scan
+        document.getElementById('btn-scan').addEventListener('click', () => {
+            document.getElementById('modal-scanner').classList.remove('hidden');
+            startScanner((code) => {
+                const produit = produits.find(p => p.codeBarre === code);
+                if (produit) {
+                    document.getElementById('modal-scanner').classList.add('hidden');
+                    ouvrirModalVente(produit);
+                } else {
+                    showToast('Produit non trouvé', 'error');
+                    document.getElementById('modal-scanner').classList.add('hidden');
+                }
+            });
+        });
+
+        document.getElementById('btn-scan-modal').addEventListener('click', () => {
+            document.getElementById('modal-scanner').classList.remove('hidden');
+            startScanner((code) => {
+                document.getElementById('produit-codebarre').value = code;
+                document.getElementById('modal-scanner').classList.add('hidden');
+            });
+        });
+
+        // Formulaire produit
+        document.getElementById('form-produit').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('produit-id').value;
+            const nom = document.getElementById('produit-nom').value;
+            const codeBarre = document.getElementById('produit-codebarre').value;
+            const prix = parseFloat(document.getElementById('produit-prix').value);
+            const quantite = parseInt(document.getElementById('produit-quantite').value);
+            const seuil = parseInt(document.getElementById('produit-seuil').value) || null;
+            const fournisseurId = document.getElementById('produit-fournisseur').value || null;
+            let image = null;
+            const fileInput = document.getElementById('produit-image');
+            if (fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    image = ev.target.result;
+                    sauvegarderProduit(id, nom, codeBarre, prix, quantite, seuil, fournisseurId, image);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                if (id) { const ancien = produits.find(p => p.id === id); image = ancien ? ancien.image : null; }
+                sauvegarderProduit(id, nom, codeBarre, prix, quantite, seuil, fournisseurId, image);
+            }
+        });
+
+        document.getElementById('btn-valider-reappro').addEventListener('click', () => {
+            const produitId = document.getElementById('reappro-produit').value;
+            const quantite = parseInt(document.getElementById('reappro-quantite').value);
+            if (!produitId || isNaN(quantite) || quantite <= 0) { showToast('Quantité invalide', 'error'); return; }
+            const produit = produits.find(p => p.id === produitId);
+            if (produit) {
+                produit.quantite += quantite;
+                saveData();
+                renderProduitsPatron();
+                verifierAlertes();
+                updatePatronStats();
+                showToast(`Stock de ${produit.nom} augmenté de ${quantite}`);
+                document.getElementById('modal-reappro').classList.add('hidden');
+                document.getElementById('reappro-quantite').value = '';
+            }
+        });
+
+        document.getElementById('btn-sauvegarder-code').addEventListener('click', () => {
+            const nouveau = document.getElementById('nouveau-code').value;
+            const confirmer = document.getElementById('confirmer-code').value;
+            if (!nouveau || nouveau !== confirmer) { showToast('Les codes ne correspondent pas', 'error'); return; }
+            patronCode = nouveau;
+            saveData();
+            showToast('Code patron modifié');
+            document.getElementById('modal-changer-code').classList.add('hidden');
+            document.getElementById('nouveau-code').value = '';
+            document.getElementById('confirmer-code').value = '';
+        });
+
+        document.getElementById('btn-importer-fichier').addEventListener('click', async () => {
+            const file = document.getElementById('pdf-file').files[0];
+            if (!file) { showToast('Veuillez sélectionner un fichier PDF', 'error'); return; }
+            document.getElementById('import-log').innerHTML = '<p class="text-blue-600">Traitement en cours...</p>';
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+                }
+                const lines = fullText.split('\n').map(l => l.trim()).filter(l => l);
+                let success = 0, errors = 0;
+                lines.forEach(line => {
+                    const parts = line.split(/\s+/);
+                    if (parts.length < 3) { errors++; return; }
+                    let nom, prix, quantite, seuil = null, codeBarre = null;
+                    if (parts.length === 3) { nom = parts[0]; prix = parseFloat(parts[1]); quantite = parseInt(parts[2]); }
+                    else if (parts.length === 4) { nom = parts[0]; prix = parseFloat(parts[1]); quantite = parseInt(parts[2]); seuil = parseInt(parts[3]) || null; }
+                    else if (parts.length >= 5) {
+                        codeBarre = parts[parts.length-1];
+                        seuil = parseInt(parts[parts.length-2]) || null;
+                        quantite = parseInt(parts[parts.length-3]);
+                        prix = parseFloat(parts[parts.length-4]);
+                        nom = parts.slice(0, parts.length-4).join(' ');
+                    }
+                    if (isNaN(prix) || isNaN(quantite) || prix <= 0 || quantite < 0) { errors++; return; }
+                    if (produits.find(p => p.nom === nom || (codeBarre && p.codeBarre === codeBarre))) { errors++; return; }
+                    produits.push({ id: generateId(), nom, codeBarre, prix, quantite, seuil, fournisseurId: null, image: null });
+                    success++;
+                });
+                saveData();
+                renderProduitsPatron();
+                verifierAlertes();
+                updatePatronStats();
+                document.getElementById('import-log').innerHTML = `<p class="text-green-600">Importé: ${success} produits, ${errors} erreurs.</p>`;
+                showToast(`${success} produits importés`);
+            } catch (e) { console.error(e); document.getElementById('import-log').innerHTML = '<p class="text-red-600">Erreur de lecture.</p>'; }
+        });
+
+        document.getElementById('btn-sauvegarder-api').addEventListener('click', () => {
+            apiConfig = {
+                whatsappToken: document.getElementById('api-whatsapp-token').value,
+                whatsappPhone: document.getElementById('api-whatsapp-phone').value,
+                webhookUrl: document.getElementById('api-webhook-url').value,
+                webhookSecret: document.getElementById('api-webhook-secret').value,
+                paiementKey: document.getElementById('api-paiement-key').value
+            };
+            saveData();
+            showToast('Configuration API enregistrée');
+            document.getElementById('modal-config-api').classList.add('hidden');
+        });
+
+        // Événements dettes
+        document.getElementById('btn-fermer-dettes').addEventListener('click', () => {
+            document.getElementById('modal-dettes').classList.add('hidden');
+        });
+
+        document.getElementById('btn-add-dette').addEventListener('click', () => {
+            const clientId = document.getElementById('dette-client').value;
+            const description = document.getElementById('dette-produit-description').value.trim();
+            const montantTotal = parseFloat(document.getElementById('dette-montant').value);
+            const dateEcheance = document.getElementById('dette-echeance').value;
+            if (!clientId || !description || isNaN(montantTotal) || montantTotal <= 0) {
+                showToast('Veuillez remplir tous les champs correctement', 'error');
+                return;
+            }
+            dettes.push({
+                id: generateId(),
+                clientId,
+                description,
+                montantTotal,
+                dateEcheance
+            });
+            saveData();
+            document.getElementById('dette-produit-description').value = '';
+            document.getElementById('dette-montant').value = '';
+            document.getElementById('dette-echeance').value = '';
+            afficherDettes();
+            updatePatronStats();
+            showToast('Dette ajoutée');
+        });
+
+        document.getElementById('btn-add-client').addEventListener('click', () => {
+            const nom = document.getElementById('new-client-nom').value.trim();
+            const contact = document.getElementById('new-client-contact').value.trim();
+            if (!nom) { showToast('Nom client requis', 'error'); return; }
+            clients.push({ id: generateId(), nom, contact });
+            saveData();
+            document.getElementById('new-client-nom').value = '';
+            document.getElementById('new-client-contact').value = '';
+            remplirFiltresDettes();
+            remplirSelectClients();
+            showToast('Client ajouté');
+        });
+
+        document.getElementById('btn-reinitialiser-filtres').addEventListener('click', () => {
+            document.getElementById('filtre-dette-client').value = '';
+            document.getElementById('filtre-dette-statut').value = '';
+            document.getElementById('filtre-dette-date').value = '';
+            afficherDettes();
+        });
+
+        document.getElementById('filtre-dette-client').addEventListener('change', afficherDettes);
+        document.getElementById('filtre-dette-statut').addEventListener('change', afficherDettes);
+        document.getElementById('filtre-dette-date').addEventListener('change', afficherDettes);
+
+        document.getElementById('btn-dette-detail-fermer').addEventListener('click', () => { document.getElementById('modal-dette-detail').classList.add('hidden'); });
+        document.getElementById('btn-dette-detail-modifier').addEventListener('click', () => {
+            const detteId = document.getElementById('dette-detail-id').value;
+            const dette = dettes.find(d => d.id === detteId);
+            if (dette) ouvrirEditDette(dette);
+        });
+        document.getElementById('btn-dette-detail-supprimer').addEventListener('click', () => {
+            const detteId = document.getElementById('dette-detail-id').value;
+            if (confirm('Supprimer cette dette ?')) {
+                dettes = dettes.filter(d => d.id !== detteId);
+                paiements = paiements.filter(p => p.detteId !== detteId);
+                saveData();
+                document.getElementById('modal-dette-detail').classList.add('hidden');
+                afficherDettes();
+                updatePatronStats();
+                showToast('Dette supprimée');
+            }
+        });
+        document.getElementById('btn-dette-detail-ajouter-paiement').addEventListener('click', () => {
+            const detteId = document.getElementById('dette-detail-id').value;
+            const dette = dettes.find(d => d.id === detteId);
+            if (!dette) return;
+            const montant = parseFloat(document.getElementById('dette-detail-paiement-montant').value);
+            const date = document.getElementById('dette-detail-paiement-date').value;
+            if (isNaN(montant) || montant <= 0) { showToast('Montant invalide', 'error'); return; }
+            if (!date) { showToast('Date requise', 'error'); return; }
+            paiements.push({ id: generateId(), detteId: detteId, montant: montant, date: date });
+            saveData();
+            ouvrirDetailDette(detteId);
+            afficherDettes();
+            updatePatronStats();
+            showToast('Paiement ajouté');
+        });
+
+        document.getElementById('btn-dette-edit-annuler').addEventListener('click', () => { document.getElementById('modal-dette-edit').classList.add('hidden'); });
+        document.getElementById('btn-dette-edit-sauvegarder').addEventListener('click', () => {
+            const id = document.getElementById('dette-edit-id').value;
+            const dette = dettes.find(d => d.id === id);
+            if (!dette) return;
+            const clientId = document.getElementById('dette-edit-client').value;
+            const description = document.getElementById('dette-edit-description').value.trim();
+            const montantTotal = parseFloat(document.getElementById('dette-edit-montant').value);
+            const dateEcheance = document.getElementById('dette-edit-echeance').value;
+            if (!clientId || !description || isNaN(montantTotal) || montantTotal <= 0) { showToast('Veuillez remplir tous les champs', 'error'); return; }
+            dette.clientId = clientId;
+            dette.description = description;
+            dette.montantTotal = montantTotal;
+            dette.dateEcheance = dateEcheance;
+            saveData();
+            document.getElementById('modal-dette-edit').classList.add('hidden');
+            afficherDettes();
+            updatePatronStats();
+            showToast('Dette modifiée');
+        });
+
+        // Événements vente
+        document.getElementById('btn-annuler-vente').addEventListener('click', () => {
+            document.getElementById('modal-vente-quantite').classList.add('hidden');
+            produitEnVente = null;
+        });
+        document.getElementById('btn-confirmer-vente').addEventListener('click', () => {
+            if (!produitEnVente) return;
+            const quantite = parseInt(document.getElementById('vente-quantite').value);
+            if (isNaN(quantite) || quantite <= 0 || quantite > produitEnVente.quantite) {
+                showToast('Quantité invalide', 'error');
+                return;
+            }
+            const vente = {
+                id: generateId(),
+                produitId: produitEnVente.id,
+                produitNom: produitEnVente.nom,
+                employeId: currentUser.id,
+                employeNom: currentUser.username,
+                quantite,
+                prixUnitaire: produitEnVente.prix,
+                date: new Date().toISOString()
+            };
+            ventes.push(vente);
+            produitEnVente.quantite -= quantite;
+            saveData();
+            document.getElementById('modal-vente-quantite').classList.add('hidden');
+            if (currentUser.role === 'employe') {
+                renderProduitsEmploye();
+            } else {
+                renderProduitsPatron();
+                renderVentesChart();
+            }
+            verifierAlertes();
+            updatePatronStats();
+            showToast('Vente enregistrée');
+            produitEnVente = null;
+        });
+    });
+
+    // ==================== FONCTIONS ====================
+    function showEmployePage() {
+        document.getElementById('login-page').classList.add('hidden');
+        document.getElementById('employe-page').classList.remove('hidden');
+        document.getElementById('emp-name').textContent = currentUser.username;
+        renderProduitsEmploye();
+    }
+
+    function showPatronPage() {
+        document.getElementById('login-page').classList.add('hidden');
+        document.getElementById('patron-page').classList.remove('hidden');
+        renderProduitsPatron();
+        verifierAlertes();
+        updatePatronStats();
+        updateFournisseurSelects();
+        renderVentesChart();
+        document.getElementById('search-produit-patron').addEventListener('input', renderProduitsPatron);
+        chargerConfigApi();
+    }
+
+    function renderProduitsEmploye() {
+        const search = document.getElementById('search-produit').value.toLowerCase();
+        const filtered = produits.filter(p => p.nom.toLowerCase().includes(search));
+        const container = document.getElementById('produits-list');
+        container.innerHTML = '';
+        filtered.forEach(p => {
+            const estAlerte = p.seuil && p.quantite <= p.seuil;
+            const card = document.createElement('div');
+            card.className = `product-card bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden ${estAlerte ? 'produit-alerte' : ''}`;
+            const imgHtml = p.image ? `<img src="${p.image}" alt="${p.nom}" class="h-40 w-full object-cover">` : '<div class="h-40 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center"><i class="fas fa-image text-gray-400 text-4xl"></i></div>';
+            const alertBadge = estAlerte ? '<span class="badge-alerte bg-red-600 text-white text-xs px-2 py-1 rounded-full ml-2">⚠️ Stock faible</span>' : '';
+            card.innerHTML = `
+                ${imgHtml}
+                <div class="p-5">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-semibold text-xl">${p.nom}</h4>
+                        ${alertBadge}
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-400 text-lg">${p.prix} FCFA</p>
+                    <div class="flex items-center justify-between mt-3">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Stock: ${p.quantite} ${p.seuil ? `/ Seuil ${p.seuil}` : ''}</span>
+                    </div>
+                    <button class="btn-vendre w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 rounded-xl transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 shadow-lg" data-id="${p.id}" ${p.quantite <= 0 ? 'disabled' : ''}>
+                        <i class="fas fa-shopping-cart"></i> Vendre
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        document.querySelectorAll('.btn-vendre').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const produit = produits.find(p => p.id === id);
+                if (!produit) {
+                    showToast('Produit introuvable', 'error');
+                    return;
+                }
+                if (produit.quantite <= 0) {
+                    showToast('Stock épuisé', 'error');
+                    return;
+                }
+                ouvrirModalVente(produit);
+            });
+        });
+    }
+
+    function renderProduitsPatron() {
+        const search = document.getElementById('search-produit-patron')?.value.toLowerCase() || '';
+        const filtered = produits.filter(p => p.nom.toLowerCase().includes(search));
+        const tbody = document.getElementById('produits-patron-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        filtered.forEach(p => {
+            const estAlerte = p.seuil && p.quantite <= p.seuil;
+            const fournisseur = fournisseurs.find(f => f.id === p.fournisseurId);
+            const tr = document.createElement('tr');
+            tr.className = estAlerte ? 'produit-alerte' : '';
+            tr.innerHTML = `
+                <td class="px-3 py-4 font-medium">${p.nom}</td>
+                <td class="px-3 py-4 text-gray-500">${p.codeBarre || '-'}</td>
+                <td class="px-3 py-4">${p.prix} FCFA</td>
+                <td class="px-3 py-4">
+                    <span class="${estAlerte ? 'text-red-600 font-bold' : ''}">${p.quantite}</span>
+                    ${p.seuil ? `<span class="text-xs text-gray-400 ml-1">/ seuil ${p.seuil}</span>` : ''}
+                </td>
+                <td class="px-3 py-4">${p.seuil ? p.seuil : '-'}</td>
+                <td class="px-3 py-4">${fournisseur ? fournisseur.nom : '-'}</td>
+                <td class="px-3 py-4">
+                    <div class="flex gap-2">
+                        <button class="btn-modif bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-all transform hover:scale-105 shadow-md" data-id="${p.id}"><i class="fas fa-edit mr-1"></i> Modif</button>
+                        <button class="btn-suppr bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm transition-all transform hover:scale-105 shadow-md" data-id="${p.id}"><i class="fas fa-trash mr-1"></i> Suppr</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.querySelectorAll('.btn-modif').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.dataset.id;
+                const produit = produits.find(p => p.id === id);
+                if (produit) ouvrirModalProduit(produit);
+            });
+        });
+
+        document.querySelectorAll('.btn-suppr').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (confirm('Supprimer ce produit ?')) {
+                    const id = e.currentTarget.dataset.id;
+                    produits = produits.filter(p => p.id !== id);
+                    saveData();
+                    renderProduitsPatron();
+                    verifierAlertes();
+                    updatePatronStats();
+                    showToast('Produit supprimé');
+                }
+            });
+        });
+    }
+
+    let ventesChart = null;
+    function renderVentesChart() {
+        const ctx = document.getElementById('ventesChart').getContext('2d');
+        if (ventesChart) ventesChart.destroy();
+        const dates = [];
+        const ventesParJour = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+            dates.push(dateStr);
+            const total = ventes.filter(v => new Date(v.date).toDateString() === d.toDateString()).reduce((acc, v) => acc + (v.prixUnitaire * v.quantite), 0);
+            ventesParJour.push(total);
+        }
+        ventesChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: dates, datasets: [{ label: 'Chiffre d\'affaires (FCFA)', data: ventesParJour, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.2)', tension: 0.4, fill: true, pointBackgroundColor: '#3b82f6', pointBorderColor: '#ffffff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function updateFournisseurSelects() {
+        const selectFournisseur = document.getElementById('produit-fournisseur');
+        if (selectFournisseur) {
+            selectFournisseur.innerHTML = '<option value="">Aucun</option>';
+            fournisseurs.forEach(f => { selectFournisseur.innerHTML += `<option value="${f.id}">${f.nom}</option>`; });
+        }
+    }
+
+    function updateReapproSelect(searchTerm) {
+        const select = document.getElementById('reappro-produit');
+        if (!select) return;
+        const filtered = produits.filter(p => p.nom.toLowerCase().includes(searchTerm.toLowerCase()));
+        select.innerHTML = '';
+        filtered.forEach(p => {
+            select.innerHTML += `<option value="${p.id}">${p.nom} (stock: ${p.quantite})</option>`;
+        });
+    }
+
+    const modalProduit = document.getElementById('modal-produit');
+    function ouvrirModalProduit(produit) {
+        document.getElementById('modal-title').textContent = produit ? 'Modifier produit' : 'Ajouter produit';
+        document.getElementById('produit-id').value = produit ? produit.id : '';
+        document.getElementById('produit-nom').value = produit ? produit.nom : '';
+        document.getElementById('produit-codebarre').value = produit ? produit.codeBarre || '' : '';
+        document.getElementById('produit-prix').value = produit ? produit.prix : '';
+        document.getElementById('produit-quantite').value = produit ? produit.quantite : '';
+        document.getElementById('produit-seuil').value = produit ? produit.seuil || '' : '';
+        updateFournisseurSelects();
+        if (produit && produit.fournisseurId) { document.getElementById('produit-fournisseur').value = produit.fournisseurId; }
+        const preview = document.getElementById('image-preview');
+        if (produit && produit.image) { preview.src = produit.image; preview.classList.remove('hidden'); } else preview.classList.add('hidden');
+        modalProduit.classList.remove('hidden');
+    }
+
+    function sauvegarderProduit(id, nom, codeBarre, prix, quantite, seuil, fournisseurId, image) {
+        if (id) {
+            const index = produits.findIndex(p => p.id === id);
+            if (index !== -1) { produits[index] = { ...produits[index], nom, codeBarre, prix, quantite, seuil, fournisseurId, image }; }
+        } else { produits.push({ id: generateId(), nom, codeBarre, prix, quantite, seuil, fournisseurId, image }); }
+        saveData();
+        modalProduit.classList.add('hidden');
+        renderProduitsPatron();
+        verifierAlertes();
+        updatePatronStats();
+        updateFournisseurSelects();
+        showToast('Produit enregistré');
+    }
+
+    let scannerActive = false;
+    function startScanner(callback) {
+        const container = document.getElementById('scanner-container');
+        container.innerHTML = '';
+        Quagga.init({
+            inputStream: { name: "Live", type: "LiveStream", target: container, constraints: { width: 640, height: 480, facingMode: "environment" } },
+            decoder: { readers: ["ean_reader", "ean_8_reader", "code_128_reader"] }
+        }, (err) => {
+            if (err) { console.error(err); showToast('Erreur caméra', 'error'); return; }
+            Quagga.start();
+            scannerActive = true;
+        });
+        const onDetected = (data) => {
+            if (scannerActive) { Quagga.stop(); scannerActive = false; callback(data.codeResult.code); }
+        };
+        Quagga.onDetected(onDetected);
+    }
+
+    const modalVente = document.getElementById('modal-vente-quantite');
+    let produitEnVente = null;
+    function ouvrirModalVente(produit) {
+        produitEnVente = produit;
+        document.getElementById('modal-vente-titre').textContent = `Vendre ${produit.nom}`;
+        document.getElementById('modal-vente-detail').textContent = `Prix unitaire: ${produit.prix} FCFA | Stock: ${produit.quantite}`;
+        document.getElementById('vente-quantite').max = produit.quantite;
+        document.getElementById('vente-quantite').value = 1;
+        modalVente.classList.remove('hidden');
+    }
+
+    function remplirFiltreEmployes() {
+        const select = document.getElementById('filtre-employe');
+        select.innerHTML = '<option value="">Tous employés</option>';
+        employes.forEach(e => { select.innerHTML += `<option value="${e.id}">${e.username}</option>`; });
+    }
+
+    function afficherVentes() {
+        const date = document.getElementById('filtre-date').value;
+        const employeId = document.getElementById('filtre-employe').value;
+        let filtered = ventes;
+        if (date) { const d = new Date(date); filtered = filtered.filter(v => new Date(v.date).toDateString() === d.toDateString()); }
+        if (employeId) filtered = filtered.filter(v => v.employeId === employeId);
+        const tbody = document.getElementById('table-ventes');
+        tbody.innerHTML = '';
+        let total = 0;
+        filtered.forEach(v => {
+            total += v.prixUnitaire * v.quantite;
+            tbody.innerHTML += `<tr class="border-b dark:border-gray-700"><td class="p-2">${new Date(v.date).toLocaleDateString()}</td><td class="p-2">${v.produitNom}</td><td class="p-2">${v.quantite}</td><td class="p-2">${(v.prixUnitaire * v.quantite).toFixed(0)} FCFA</td><td class="p-2">${v.employeNom}</td></tr>`;
+        });
+        document.getElementById('total-ventes').textContent = `Total : ${total.toFixed(0)} FCFA`;
+    }
+
+    function afficherListeEmployes() {
+        const liste = document.getElementById('liste-employes');
+        liste.innerHTML = '';
+        employes.forEach(e => {
+            const li = document.createElement('li');
+            li.className = 'py-2 flex justify-between items-center';
+            li.innerHTML = `${e.username} <button class="btn-suppr-employe bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm" data-id="${e.id}"><i class="fas fa-trash"></i></button>`;
+            liste.appendChild(li);
+        });
+        document.querySelectorAll('.btn-suppr-employe').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = e.currentTarget.dataset.id;
+                if (confirm('Supprimer cet employé ?')) {
+                    employes = employes.filter(emp => emp.id !== id);
+                    saveData();
+                    afficherListeEmployes();
+                    updatePatronStats();
+                    showToast('Employé supprimé');
+                }
+            });
+        });
+    }
+
+    document.getElementById('btn-add-employe').addEventListener('click', () => {
+        const username = document.getElementById('new-employe-username').value.trim();
+        const password = document.getElementById('new-employe-password').value.trim();
+        if (!username || !password) { showToast('Champs requis', 'error'); return; }
+        if (employes.find(e => e.username === username)) { showToast('Nom déjà pris', 'error'); return; }
+        employes.push({ id: generateId(), username, password: hashPassword(password), role: 'employe' });
+        saveData();
+        afficherListeEmployes();
+        document.getElementById('new-employe-username').value = '';
+        document.getElementById('new-employe-password').value = '';
+        showToast('Employé ajouté');
+    });
+
+    function afficherListeFournisseurs() {
+        const liste = document.getElementById('liste-fournisseurs');
+        liste.innerHTML = '';
+        fournisseurs.forEach(f => {
+            const li = document.createElement('li');
+            li.className = 'py-2 flex justify-between items-center';
+            li.innerHTML = `${f.nom} (${f.contact}) <button class="btn-suppr-fournisseur bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm" data-id="${f.id}"><i class="fas fa-trash"></i></button>`;
+            liste.appendChild(li);
+        });
+        document.querySelectorAll('.btn-suppr-fournisseur').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = e.currentTarget.dataset.id;
+                if (confirm('Supprimer ce fournisseur ?')) {
+                    fournisseurs = fournisseurs.filter(f => f.id !== id);
+                    produits.forEach(p => { if (p.fournisseurId === id) p.fournisseurId = null; });
+                    saveData();
+                    afficherListeFournisseurs();
+                    updateFournisseurSelects();
+                    showToast('Fournisseur supprimé');
+                }
+            });
+        });
+    }
+
+    document.getElementById('btn-add-fournisseur').addEventListener('click', () => {
+        const nom = document.getElementById('new-fournisseur-nom').value.trim();
+        const contact = document.getElementById('new-fournisseur-contact').value.trim();
+        if (!nom) { showToast('Nom requis', 'error'); return; }
+        fournisseurs.push({ id: generateId(), nom, contact });
+        saveData();
+        afficherListeFournisseurs();
+        document.getElementById('new-fournisseur-nom').value = '';
+        document.getElementById('new-fournisseur-contact').value = '';
+        updateFournisseurSelects();
+        showToast('Fournisseur ajouté');
+    });
+
+    function chargerConfigApi() {
+        document.getElementById('api-whatsapp-token').value = apiConfig.whatsappToken || '';
+        document.getElementById('api-whatsapp-phone').value = apiConfig.whatsappPhone || '';
+        document.getElementById('api-webhook-url').value = apiConfig.webhookUrl || '';
+        document.getElementById('api-webhook-secret').value = apiConfig.webhookSecret || '';
+        document.getElementById('api-paiement-key').value = apiConfig.paiementKey || '';
+    }
+
+    // ==================== FONCTIONS POUR DETTES ====================
+    function remplirFiltresDettes() {
+        const selectClient = document.getElementById('filtre-dette-client');
+        selectClient.innerHTML = '<option value="">Tous les clients</option>';
+        clients.forEach(c => { selectClient.innerHTML += `<option value="${c.id}">${c.nom}</option>`; });
+    }
+
+    function remplirSelectClients() {
+        const selectClient = document.getElementById('dette-client');
+        selectClient.innerHTML = '<option value="">Choisir un client</option>';
+        clients.forEach(c => { selectClient.innerHTML += `<option value="${c.id}">${c.nom}</option>`; });
+    }
+
+    function afficherDettes() {
+        const clientId = document.getElementById('filtre-dette-client').value;
+        const statut = document.getElementById('filtre-dette-statut').value;
+        const date = document.getElementById('filtre-dette-date').value;
+        let filtered = dettes.filter(d => {
+            if (clientId && d.clientId !== clientId) return false;
+            const totalPaye = paiements.filter(p => p.detteId === d.id).reduce((s, p) => s + p.montant, 0);
+            const reste = d.montantTotal - totalPaye;
+            let statutReel = reste <= 0 ? 'paye' : (totalPaye > 0 ? 'partiel' : 'impaye');
+            if (statut && statutReel !== statut) return false;
+            if (date && d.dateEcheance !== date) return false;
+            return true;
+        });
+
+        const tbody = document.getElementById('table-dettes');
+        tbody.innerHTML = '';
+        filtered.forEach(d => {
+            const client = clients.find(c => c.id === d.clientId);
+            const paiementsDette = paiements.filter(p => p.detteId === d.id);
+            const totalPaye = paiementsDette.reduce((s, p) => s + p.montant, 0);
+            const reste = d.montantTotal - totalPaye;
+            let statutClass = '', statutText = '';
+            if (reste <= 0) { statutClass = 'badge-paye'; statutText = 'Payé'; }
+            else if (totalPaye > 0) { statutClass = 'badge-partiel'; statutText = 'Partiel'; }
+            else { statutClass = 'badge-impaye'; statutText = 'Impayé'; }
+
+            const aujourdhui = new Date().toISOString().split('T')[0];
+            const estEnRetard = d.dateEcheance && d.dateEcheance < aujourdhui && reste > 0;
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b dark:border-gray-700';
+            tr.innerHTML = `
+                <td class="p-2">${client ? client.nom : '?'}</td>
+                <td class="p-2">${d.description || '-'}</td>
+                <td class="p-2">${d.montantTotal} FCFA</td>
+                <td class="p-2">${totalPaye} FCFA</td>
+                <td class="p-2">${reste} FCFA</td>
+                <td class="p-2">${d.dateEcheance || '-'} ${estEnRetard ? '<span class="badge-retard ml-1">Retard</span>' : ''}</td>
+                <td class="p-2"><span class="${statutClass}">${statutText}</span></td>
+                <td class="p-2">
+                    <button class="btn-voir-dette bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs" data-id="${d.id}">Voir</button>
+                    <button class="btn-suppr-dette bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs" data-id="${d.id}">Supprimer</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        const totalDettes = filtered.reduce((acc, d) => acc + d.montantTotal, 0);
+        const totalPayeGlobal = filtered.reduce((acc, d) => {
+            const paye = paiements.filter(p => p.detteId === d.id).reduce((s, p) => s + p.montant, 0);
+            return acc + paye;
+        }, 0);
+        const totalReste = totalDettes - totalPayeGlobal;
+        const nbRetard = filtered.filter(d => {
+            const reste = d.montantTotal - paiements.filter(p => p.detteId === d.id).reduce((s, p) => s + p.montant, 0);
+            return d.dateEcheance && d.dateEcheance < new Date().toISOString().split('T')[0] && reste > 0;
+        }).length;
+        document.getElementById('recap-total-dettes').textContent = totalDettes + ' FCFA';
+        document.getElementById('recap-total-paye').textContent = totalPayeGlobal + ' FCFA';
+        document.getElementById('recap-total-reste').textContent = totalReste + ' FCFA';
+        document.getElementById('recap-nb-retard').textContent = nbRetard;
+
+        document.querySelectorAll('.btn-voir-dette').forEach(btn => {
+            btn.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; ouvrirDetailDette(id); });
+        });
+        document.querySelectorAll('.btn-suppr-dette').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.dataset.id;
+                if (confirm('Supprimer cette dette ?')) {
+                    dettes = dettes.filter(d => d.id !== id);
+                    paiements = paiements.filter(p => p.detteId !== id);
+                    saveData();
+                    afficherDettes();
+                    updatePatronStats();
+                    showToast('Dette supprimée');
+                }
+            });
+        });
+    }
+
+    function ouvrirDetailDette(detteId) {
+        const dette = dettes.find(d => d.id === detteId);
+        if (!dette) return;
+        const client = clients.find(c => c.id === dette.clientId);
+        const paiementsDette = paiements.filter(p => p.detteId === detteId).sort((a,b) => new Date(b.date) - new Date(a.date));
+        const totalPaye = paiementsDette.reduce((s, p) => s + p.montant, 0);
+        const reste = dette.montantTotal - totalPaye;
+
+        document.getElementById('dette-detail-id').value = detteId;
+        document.getElementById('dette-detail-client').textContent = client ? client.nom : '?';
+        document.getElementById('dette-detail-description').textContent = dette.description || '-';
+        document.getElementById('dette-detail-montant').textContent = dette.montantTotal;
+        document.getElementById('dette-detail-paye').textContent = totalPaye;
+        document.getElementById('dette-detail-reste').textContent = reste;
+        document.getElementById('dette-detail-echeance').textContent = dette.dateEcheance || '-';
+        let statutTexte = reste <= 0 ? 'Payé' : (totalPaye > 0 ? 'Partiel' : 'Impayé');
+        document.getElementById('dette-detail-statut').textContent = statutTexte;
+
+        const ul = document.getElementById('dette-detail-paiements');
+        ul.innerHTML = '';
+        if (paiementsDette.length === 0) { ul.innerHTML = '<li class="text-gray-500">Aucun paiement</li>'; }
+        else {
+            paiementsDette.forEach(p => { ul.innerHTML += `<li class="flex justify-between text-sm py-1"><span>${p.date} : ${p.montant} FCFA</span></li>`; });
+        }
+        document.getElementById('modal-dette-detail').classList.remove('hidden');
+    }
+
+    function ouvrirEditDette(dette) {
+        const select = document.getElementById('dette-edit-client');
+        select.innerHTML = '';
+        clients.forEach(c => { select.innerHTML += `<option value="${c.id}" ${c.id === dette.clientId ? 'selected' : ''}>${c.nom}</option>`; });
+        document.getElementById('dette-edit-id').value = dette.id;
+        document.getElementById('dette-edit-description').value = dette.description || '';
+        document.getElementById('dette-edit-montant').value = dette.montantTotal;
+        document.getElementById('dette-edit-echeance').value = dette.dateEcheance || '';
+        document.getElementById('modal-dette-edit').classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
